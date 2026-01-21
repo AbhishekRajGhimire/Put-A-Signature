@@ -36,6 +36,10 @@ Put A Signature/**/Generated Files/
 Put A Signature/**/bin/
 Put A Signature/**/obj/
 
+# Local native dependencies (recommended to keep DLL/LIB out of git)
+external/pdfium/bin/
+external/pdfium/lib/
+
 # Logs
 *.log
 

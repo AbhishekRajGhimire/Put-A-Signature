@@ -13,9 +13,12 @@
 #include <winrt/Windows.Storage.Pickers.h>
 #include <winrt/Windows.Storage.h>
 #include <winrt/Windows.ApplicationModel.DataTransfer.h>
+#include <winrt/Windows.Security.Cryptography.h>
 
 #include <shobjidl.h> // IInitializeWithWindow
 #include <microsoft.ui.xaml.window.h> // IWindowNative
+
+#include <cwchar> // swprintf_s
 
 using namespace winrt;
 using namespace Microsoft::UI::Xaml;
@@ -134,7 +137,7 @@ namespace winrt::Put_A_Signature::implementation
         else
         {
             PageNumberBox().Text(L"1");
-            PageCountText().Text(L"—");
+            PageCountText().Text(L"-");
         }
     }
 
@@ -142,17 +145,20 @@ namespace winrt::Put_A_Signature::implementation
     {
         if (!file) co_return;
 
-        DocInfoText().Text(file.Name());
         StatusText().Text(L"Loading PDF...");
 
         bool loaded = false;
         std::wstring errorMessage{};
 
+        winrt::Windows::Storage::Streams::IBuffer fileBuffer{ nullptr };
+
         try
         {
-            // PDFium calls can be expensive; move to background thread.
-            co_await winrt::resume_background();
-            m_pdf.LoadFromPath(file.Path().c_str());
+            // Packaged-app friendly: read via StorageFile and load PDF from memory.
+            fileBuffer = co_await winrt::Windows::Storage::FileIO::ReadBufferAsync(file);
+            winrt::com_array<uint8_t> bytes;
+            winrt::Windows::Security::Cryptography::CryptographicBuffer::CopyToByteArray(fileBuffer, bytes);
+            m_pdf.LoadFromBytes(std::vector<uint8_t>(bytes.begin(), bytes.end()));
             m_pageCount = m_pdf.PageCount();
             m_currentPageIndex = 0;
             loaded = true;
@@ -166,17 +172,16 @@ namespace winrt::Put_A_Signature::implementation
             errorMessage = L"Failed to load PDF";
         }
 
-        // MSVC coroutine restriction: don't co_await inside catch blocks.
-        co_await ResumeForeground(DispatcherQueue());
-
         if (!loaded)
         {
+            DocInfoText().Text(L"(no file loaded)");
             SetEmptyStateVisible(true);
             UpdateNavigationUi();
             StatusText().Text(errorMessage.empty() ? L"Failed to load PDF" : winrt::hstring(errorMessage));
             co_return;
         }
 
+        DocInfoText().Text(file.Name());
         SetEmptyStateVisible(false);
         UpdateNavigationUi();
         co_await RenderCurrentPageAsync();
@@ -188,28 +193,56 @@ namespace winrt::Put_A_Signature::implementation
 
         StatusText().Text(L"Rendering...");
 
+        const int32_t pageIndex = m_currentPageIndex;
+
+        Windows::Graphics::Imaging::SoftwareBitmap pageBitmap{ nullptr };
+
+        // 1) Render via PDFium
         try
         {
-            int32_t pageIndex = m_currentPageIndex;
-
-            co_await winrt::resume_background();
-            Windows::Graphics::Imaging::SoftwareBitmap pageBitmap = m_pdf.RenderPageToSoftwareBitmap(pageIndex, 2.0f /*scale*/);
-
-            co_await ResumeForeground(DispatcherQueue());
-
-            Microsoft::UI::Xaml::Media::Imaging::SoftwareBitmapSource source;
-            co_await source.SetBitmapAsync(pageBitmap);
-            PdfPageImage().Source(source);
-
-            StatusText().Text(L"Ready");
+            pageBitmap = m_pdf.RenderPageToSoftwareBitmap(pageIndex, 2.0f /*scale*/);
         }
         catch (std::exception const& ex)
         {
-            StatusText().Text(winrt::to_hstring(ex.what()));
+            std::wstring msg = L"PDF render failed: ";
+            msg += winrt::to_hstring(ex.what()).c_str();
+            StatusText().Text(winrt::hstring(msg));
+            co_return;
         }
         catch (...)
         {
-            StatusText().Text(L"Render failed");
+            StatusText().Text(L"PDF render failed (unknown error)");
+            co_return;
+        }
+
+        // 2) Display in WinUI (this can fail with HRESULTs if the bitmap is incompatible)
+        try
+        {
+            Microsoft::UI::Xaml::Media::Imaging::SoftwareBitmapSource source;
+            co_await source.SetBitmapAsync(pageBitmap);
+            PdfPageImage().Source(source);
+            StatusText().Text(L"Ready");
+        }
+        catch (winrt::hresult_error const& e)
+        {
+            wchar_t hex[11]{};
+            swprintf_s(hex, L"%08X", static_cast<uint32_t>(e.code().value));
+
+            std::wstring msg = L"Display failed: 0x";
+            msg += hex;
+            msg += L" ";
+            msg += e.message().c_str();
+            StatusText().Text(winrt::hstring(msg));
+        }
+        catch (std::exception const& ex)
+        {
+            std::wstring msg = L"Display failed: ";
+            msg += winrt::to_hstring(ex.what()).c_str();
+            StatusText().Text(winrt::hstring(msg));
+        }
+        catch (...)
+        {
+            StatusText().Text(L"Display failed (unknown error)");
         }
     }
 

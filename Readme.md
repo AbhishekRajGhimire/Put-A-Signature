@@ -16,6 +16,10 @@ If you created the Visual Studio template **inside this repo**, your real app co
 
 See `docs/BOOTSTRAP.md` for a quick explanation of the generated folders and what to edit.
 
+## PDFium (make PDF rendering work)
+
+Follow `docs/PDFIUM_SETUP.md` to drop your downloaded PDFium (x64, without V8) into `external/pdfium/` and rebuild.
+
 ---
 
 ## Architecture (Separation of Concerns)

@@ -4,11 +4,15 @@
 #include <mutex>
 #include <stdexcept>
 #include <cstring>
+#include <algorithm>
+#include <limits>
 
 #include <windows.h>
+#include <winrt/Windows.Security.Cryptography.h>
 
 using namespace winrt;
 using namespace winrt::Windows::Graphics::Imaging;
+using namespace winrt::Windows::Security::Cryptography;
 
 #if __has_include("fpdfview.h") && __has_include("fpdf_edit.h") && __has_include("fpdf_save.h")
   #include "fpdfview.h"
@@ -68,6 +72,10 @@ namespace
 struct PdfDocumentHandler::Impl
 {
     std::wstring path{};
+#if PUT_A_SIGNATURE_HAS_PDFIUM
+    // Keep backing bytes alive when loading via FPDF_LoadMemDocument.
+    std::vector<uint8_t> docBytes{};
+#endif
 
 #if PUT_A_SIGNATURE_HAS_PDFIUM
     FPDF_DOCUMENT doc{ nullptr };
@@ -132,6 +140,10 @@ void PdfDocumentHandler::Close()
 #endif
 
     m->path.clear();
+#if PUT_A_SIGNATURE_HAS_PDFIUM
+    m->docBytes.clear();
+    m->docBytes.shrink_to_fit();
+#endif
 }
 
 void PdfDocumentHandler::LoadFromPath(std::wstring const& path)
@@ -150,6 +162,40 @@ void PdfDocumentHandler::LoadFromPath(std::wstring const& path)
     }
 #else
     (void)path;
+    throw std::runtime_error("PDFium not integrated: add PDFium headers/libs so fpdfview.h/fpdf_edit.h/fpdf_save.h are available.");
+#endif
+}
+
+void PdfDocumentHandler::LoadFromBytes(std::vector<uint8_t> bytes)
+{
+#if PUT_A_SIGNATURE_HAS_PDFIUM
+    ThrowIf(!m, "PdfDocumentHandler not initialized");
+
+    Close();
+
+    // Keep the bytes alive for as long as the document is open.
+    m->docBytes = std::move(bytes);
+    if (m->docBytes.empty())
+    {
+        throw std::runtime_error("PDF buffer is empty");
+    }
+
+#if defined(FPDF_LoadMemDocument64)
+    m->doc = FPDF_LoadMemDocument64(m->docBytes.data(), static_cast<size_t>(m->docBytes.size()), nullptr);
+#else
+    if (m->docBytes.size() > static_cast<size_t>(std::numeric_limits<int>::max()))
+    {
+        throw std::runtime_error("PDF too large for FPDF_LoadMemDocument");
+    }
+    m->doc = FPDF_LoadMemDocument(m->docBytes.data(), static_cast<int>(m->docBytes.size()), nullptr);
+#endif
+
+    if (!m->doc)
+    {
+        throw std::runtime_error("FPDF_LoadMemDocument failed (corrupt PDF, password needed, or PDFium load error)");
+    }
+#else
+    (void)bytes;
     throw std::runtime_error("PDFium not integrated: add PDFium headers/libs so fpdfview.h/fpdf_edit.h/fpdf_save.h are available.");
 #endif
 }
@@ -180,22 +226,27 @@ SoftwareBitmap PdfDocumentHandler::RenderPageToSoftwareBitmap(int32_t pageIndex,
     uint8_t* buffer = static_cast<uint8_t*>(FPDFBitmap_GetBuffer(bitmap));
     const int stride = FPDFBitmap_GetStride(bitmap);
 
-    SoftwareBitmap sb(BitmapPixelFormat::Bgra8, widthPx, heightPx, BitmapAlphaMode::Premultiplied);
-    BitmapBuffer sbuf = sb.LockBuffer(BitmapBufferAccessMode::Write);
-    auto desc = sbuf.GetPlaneDescription(0);
+    // Avoid relying on IMemoryBufferByteAccess (can fail depending on toolchain/runtime).
+    // Build a tightly-packed BGRA buffer (stride = width * 4) and create SoftwareBitmap from it.
+    const int dstStride = widthPx * 4;
+    std::vector<uint8_t> pixels(static_cast<size_t>(dstStride) * static_cast<size_t>(heightPx));
 
-    auto reference = sbuf.CreateReference();
-    uint8_t* dest = nullptr;
-    uint32_t capacity = 0;
-    check_hresult(reference.as<IMemoryBufferByteAccess>()->GetBuffer(&dest, &capacity));
-
+    const size_t rowCopy = static_cast<size_t>((std::min)(dstStride, stride));
     for (int y = 0; y < heightPx; ++y)
     {
-        std::memcpy(
-            dest + desc.StartIndex + y * desc.Stride,
-            buffer + y * stride,
-            static_cast<size_t>(std::min(desc.Stride, stride)));
+        std::memcpy(pixels.data() + static_cast<size_t>(y) * dstStride, buffer + static_cast<size_t>(y) * stride, rowCopy);
     }
+
+    winrt::com_array<uint8_t> bytes(static_cast<uint32_t>(pixels.size()));
+    std::memcpy(bytes.data(), pixels.data(), pixels.size());
+    auto ibuf = CryptographicBuffer::CreateFromByteArray(bytes);
+
+    SoftwareBitmap sb = SoftwareBitmap::CreateCopyFromBuffer(
+        ibuf,
+        BitmapPixelFormat::Bgra8,
+        widthPx,
+        heightPx,
+        BitmapAlphaMode::Premultiplied);
 
     FPDFBitmap_Destroy(bitmap);
     FPDF_ClosePage(page);

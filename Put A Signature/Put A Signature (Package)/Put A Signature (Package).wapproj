@@ -56,6 +56,10 @@
     <Content Include="Images\Square44x44Logo.targetsize-24_altform-unplated.png" />
     <Content Include="Images\StoreLogo.png" />
     <Content Include="Images\Wide310x150Logo.scale-200.png" />
+    <!-- PDFium runtime DLL (packaged) -->
+    <Content Include="..\..\external\pdfium\bin\$(Platform)\pdfium.dll">
+      <Link>pdfium.dll</Link>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Put A Signature\Put A Signature.vcxproj">

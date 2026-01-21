@@ -35,6 +35,9 @@ public:
 
     void LoadFromPath(std::wstring const& path);
 
+    // Preferred for packaged apps: load from in-memory PDF bytes (keeps bytes alive for PDFium).
+    void LoadFromBytes(std::vector<uint8_t> bytes);
+
     // Render a page to a BGRA8 SoftwareBitmap (premultiplied alpha).
     // scale: 1.0 = native pixel size based on page points -> pixels at 96 DPI (placeholder).
     winrt::Windows::Graphics::Imaging::SoftwareBitmap RenderPageToSoftwareBitmap(int32_t pageIndex, float scale);

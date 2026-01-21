@@ -71,7 +71,8 @@
                             HorizontalContentAlignment="Center"
                             KeyDown="PageNumberBox_KeyDown"/>
                         <TextBlock Text="of" VerticalAlignment="Center" Opacity="0.85"/>
-                        <TextBlock x:Name="PageCountText" Text="—" VerticalAlignment="Center" Opacity="0.85"/>
+                <!-- Use ASCII '-' to avoid encoding issues showing as 'â€“' if the file is saved in a non-UTF8 encoding -->
+                <TextBlock x:Name="PageCountText" Text="-" VerticalAlignment="Center" Opacity="0.85"/>
                     </StackPanel>
 
                     <TextBlock
@@ -79,7 +80,9 @@
                         x:Name="StatusText"
                         Text="Ready"
                         VerticalAlignment="Center"
-                        Opacity="0.8"/>
+                Opacity="0.8"
+                TextTrimming="CharacterEllipsis"
+                MaxWidth="720"/>
                 </Grid>
             </CommandBar.Content>
         </CommandBar>
