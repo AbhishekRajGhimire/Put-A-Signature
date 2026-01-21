@@ -1,5 +1,9 @@
 ## Put a Signature — WinUI 3 (C++/WinRT) + PDFium Starter
 
+#work in progress preview of interface
+
+<img width="2559" height="1532" alt="Screenshot 2026-01-22 044851" src="https://github.com/user-attachments/assets/201db51c-4269-42ad-8f70-b239b88c4979" />
+
 This repo is a **minimal, functional starting point** for a native Windows 11 PDF signing app using:
 
 - **WinUI 3** (Windows App SDK) for modern UI
