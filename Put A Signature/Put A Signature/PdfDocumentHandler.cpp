@@ -75,6 +75,10 @@ struct PdfDocumentHandler::Impl
 #if PUT_A_SIGNATURE_HAS_PDFIUM
     // Keep backing bytes alive when loading via FPDF_LoadMemDocument.
     std::vector<uint8_t> docBytes{};
+
+    // Keep image bitmaps alive for the lifetime of the document.
+    // PDFium does not clearly document ownership for FPDFImageObj_SetBitmap(), so we keep them.
+    std::vector<FPDF_BITMAP> ownedBitmaps{};
 #endif
 
 #if PUT_A_SIGNATURE_HAS_PDFIUM
@@ -132,6 +136,12 @@ void PdfDocumentHandler::Close()
     if (!m) return;
 
 #if PUT_A_SIGNATURE_HAS_PDFIUM
+    for (auto bmp : m->ownedBitmaps)
+    {
+        if (bmp) FPDFBitmap_Destroy(bmp);
+    }
+    m->ownedBitmaps.clear();
+
     if (m->doc)
     {
         FPDF_CloseDocument(m->doc);
@@ -272,18 +282,23 @@ void PdfDocumentHandler::StampSignatureBitmap(int32_t pageIndex, SoftwareBitmap 
     std::vector<uint8_t> sigBgra = CopySoftwareBitmapToBgra(signatureBitmap, sigW, sigH, sigStride);
     ThrowIf(sigW == 0 || sigH == 0, "Invalid signature bitmap");
 
-    FPDF_BITMAP sigBmp = FPDFBitmap_CreateEx(
-        static_cast<int>(sigW),
-        static_cast<int>(sigH),
-        FPDFBitmap_BGRA,
-        sigBgra.data(),
-        sigStride);
+    // Create an owned PDFium bitmap and copy pixels into it.
+    FPDF_BITMAP sigBmp = FPDFBitmap_Create(static_cast<int>(sigW), static_cast<int>(sigH), 1);
     ThrowIf(!sigBmp, "Failed to create signature bitmap");
+
+    uint8_t* dst = static_cast<uint8_t*>(FPDFBitmap_GetBuffer(sigBmp));
+    int dstStride = FPDFBitmap_GetStride(sigBmp);
+    const size_t rowCopy = static_cast<size_t>((std::min)(dstStride, sigStride));
+    for (uint32_t y = 0; y < sigH; ++y)
+    {
+        std::memcpy(dst + static_cast<size_t>(y) * dstStride, sigBgra.data() + static_cast<size_t>(y) * sigStride, rowCopy);
+    }
 
     FPDF_PAGEOBJECT imageObj = FPDFPageObj_NewImageObj(m->doc);
     ThrowIf(!imageObj, "Failed to create image object");
 
-    if (!FPDFImageObj_SetBitmap(&page, 0, imageObj, sigBmp))
+    // Provide the loaded page array correctly: &page with count=1 (or NULL/0).
+    if (!FPDFImageObj_SetBitmap(&page, 1, imageObj, sigBmp))
     {
         FPDFBitmap_Destroy(sigBmp);
         FPDFPageObj_Destroy(imageObj);
@@ -309,7 +324,8 @@ void PdfDocumentHandler::StampSignatureBitmap(int32_t pageIndex, SoftwareBitmap 
     FPDFPage_InsertObject(page, imageObj);
     FPDFPage_GenerateContent(page);
 
-    FPDFBitmap_Destroy(sigBmp);
+    // Keep bitmap alive for the lifetime of the document to avoid use-after-free.
+    m->ownedBitmaps.push_back(sigBmp);
     FPDF_ClosePage(page);
 #else
     (void)pageIndex;

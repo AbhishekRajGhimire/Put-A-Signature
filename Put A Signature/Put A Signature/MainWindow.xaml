@@ -114,7 +114,17 @@
                         <TextBlock x:Name="DocInfoText" Text="(no file loaded)" Opacity="0.7" VerticalAlignment="Center"/>
                     </StackPanel>
 
-                    <ScrollViewer Grid.Row="1">
+                    <ScrollViewer
+                        x:Name="PdfScrollViewer"
+                        Grid.Row="1"
+                        ZoomMode="Enabled"
+                        MinZoomFactor="0.5"
+                        MaxZoomFactor="5.0"
+                        HorizontalScrollBarVisibility="Auto"
+                        VerticalScrollBarVisibility="Auto"
+                        HorizontalScrollMode="Enabled"
+                        VerticalScrollMode="Enabled"
+                        IsZoomChainingEnabled="True">
                         <Grid HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,16">
                             <!-- Page rendered as an image -->
                             <Image
