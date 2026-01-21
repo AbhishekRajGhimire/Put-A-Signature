@@ -10,7 +10,11 @@ This repo is a **minimal, functional starting point** for a native Windows 11 PD
 
 ## Bootstrap (make it buildable)
 
-See `docs/BOOTSTRAP.md` for the exact steps to create the **WinUI 3 C++/WinRT** project in Visual Studio and copy `src/` into it.
+If you created the Visual Studio template **inside this repo**, your real app code is in:
+
+- `Put A Signature/Put A Signature/`
+
+See `docs/BOOTSTRAP.md` for a quick explanation of the generated folders and what to edit.
 
 ---
 

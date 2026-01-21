@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Put_A_Signature.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Put_A_Signature"
+    xmlns:controls="using:Microsoft.UI.Xaml.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Title="Put A Signature">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Top bar -->
+        <CommandBar DefaultLabelPosition="Right" IsDynamicOverflowEnabled="False">
+            <AppBarButton
+                x:Name="OpenPdfButton"
+                Icon="OpenFile"
+                Label="Open PDF"
+                Click="OpenPdfButton_Click"/>
+
+            <AppBarSeparator/>
+
+            <AppBarButton
+                x:Name="PrevPageButton"
+                Icon="Back"
+                Label="Prev"
+                Click="PrevPageButton_Click"/>
+
+            <AppBarButton
+                x:Name="NextPageButton"
+                Icon="Forward"
+                Label="Next"
+                Click="NextPageButton_Click"/>
+
+            <AppBarSeparator/>
+
+            <AppBarButton
+                x:Name="PlaceSignatureButton"
+                Icon="Edit"
+                Label="Place Signature"
+                Click="PlaceSignatureButton_Click"/>
+
+            <AppBarButton
+                x:Name="SaveSignedPdfButton"
+                Icon="Save"
+                Label="Save Signed PDF"
+                Click="SaveSignedPdfButton_Click"/>
+
+            <CommandBar.Content>
+                <Grid Margin="12,0,0,0" VerticalAlignment="Center">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Page navigation content (arbitrary UI belongs in CommandBar.Content, not PrimaryCommands) -->
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <TextBlock Text="Page" VerticalAlignment="Center" Opacity="0.85"/>
+                        <TextBox
+                            x:Name="PageNumberBox"
+                            Width="64"
+                            HorizontalAlignment="Left"
+                            Text="1"
+                            HorizontalContentAlignment="Center"
+                            KeyDown="PageNumberBox_KeyDown"/>
+                        <TextBlock Text="of" VerticalAlignment="Center" Opacity="0.85"/>
+                        <TextBlock x:Name="PageCountText" Text="—" VerticalAlignment="Center" Opacity="0.85"/>
+                    </StackPanel>
+
+                    <TextBlock
+                        Grid.Column="2"
+                        x:Name="StatusText"
+                        Text="Ready"
+                        VerticalAlignment="Center"
+                        Opacity="0.8"/>
+                </Grid>
+            </CommandBar.Content>
+        </CommandBar>
+
+        <!-- Main content -->
+        <Grid Grid.Row="1" ColumnSpacing="16" Padding="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="3*"/>
+                <ColumnDefinition Width="2*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- PDF viewer area -->
+            <Border
+                Grid.Column="0"
+                CornerRadius="12"
+                BorderThickness="1"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                AllowDrop="True"
+                DragOver="PdfDropZone_DragOver"
+                Drop="PdfDropZone_Drop">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Spacing="12" Padding="12">
+                        <TextBlock Text="Document" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="DocInfoText" Text="(no file loaded)" Opacity="0.7" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Row="1">
+                        <Grid HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,16">
+                            <!-- Page rendered as an image -->
+                            <Image
+                                x:Name="PdfPageImage"
+                                Stretch="Uniform"
+                                MaxWidth="1400"/>
+                        </Grid>
+                    </ScrollViewer>
+
+                    <!-- Empty state overlay -->
+                    <Grid
+                        x:Name="EmptyStatePanel"
+                        Grid.RowSpan="2"
+                        Background="Transparent"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Stretch">
+                        <StackPanel
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Spacing="12"
+                            MaxWidth="420">
+                            <FontIcon Glyph="&#xE8A5;" FontSize="48" Opacity="0.85" HorizontalAlignment="Center"/>
+                            <TextBlock
+                                Text="Drop a PDF here"
+                                FontSize="22"
+                                FontWeight="SemiBold"
+                                HorizontalAlignment="Center"/>
+                            <TextBlock
+                                Text="Or click Browse to choose a file. After loading, use Page navigation or scroll to view the page."
+                                TextWrapping="Wrap"
+                                Opacity="0.8"
+                                TextAlignment="Center"/>
+                            <Button
+                                x:Name="BrowseEmptyStateButton"
+                                Content="Browse PDF"
+                                HorizontalAlignment="Center"
+                                Click="OpenPdfButton_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- Signature area -->
+            <Border
+                Grid.Column="1"
+                CornerRadius="12"
+                BorderThickness="1"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}">
+                <Grid Padding="12" RowSpacing="12">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Spacing="12">
+                        <TextBlock Text="Signature" FontSize="16" FontWeight="SemiBold"/>
+                        <TextBlock Text="Draw below using mouse or pen" Opacity="0.7" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <Border
+                        Grid.Row="1"
+                        CornerRadius="10"
+                        BorderThickness="1"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                        <Grid>
+                            <!-- WinUI 3 note: InkCanvas is not supported. We capture signature using a Canvas + pointer events. -->
+                            <Canvas
+                                x:Name="SignatureCanvas"
+                                Background="Transparent"
+                                Margin="8"
+                                PointerPressed="SignatureCanvas_PointerPressed"
+                                PointerMoved="SignatureCanvas_PointerMoved"
+                                PointerReleased="SignatureCanvas_PointerReleased"
+                                PointerCanceled="SignatureCanvas_PointerCanceled" />
+                        </Grid>
+                    </Border>
+
+                    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
+                        <Button
+                            x:Name="ClearSignatureButton"
+                            Content="Clear"
+                            Click="ClearSignatureButton_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</Window>

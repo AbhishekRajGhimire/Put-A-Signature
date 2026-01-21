@@ -20,9 +20,8 @@ struct PdfRect
 // - Stamp a signature bitmap onto a page
 // - Save as a new file
 //
-// Assumptions:
-// - PDFium headers are included and linked.
-// - Threading model: called from UI thread for this starter. (You can move to a worker thread later.)
+// If PDFium headers are not available, this compiles but throws at runtime
+// with a clear "PDFium not integrated" message.
 class PdfDocumentHandler
 {
 public:
@@ -48,11 +47,10 @@ public:
 
     void SaveAs(std::wstring const& outputPath);
 
-    // Placeholder for multi-page support
-    // int32_t PageCount() const;
+    // Returns number of pages in the loaded document, or 0 if not loaded / PDFium not integrated.
+    int32_t PageCount() const noexcept;
 
 private:
-    void EnsurePdfiumInitialized();
     void Close();
 
     struct Impl;

@@ -1,8 +1,16 @@
 ## Bootstrapping this repo into a buildable WinUI 3 (C++/WinRT) app
 
-This repository contains the **core starter source** under `src/`, but it does **not** include a Visual Studio project/solution yet.
+This repository contains a Visual Studio WinUI 3 solution **and** some earlier “starter-only” sources.
 
-### Create the WinUI 3 C++/WinRT project (Visual Studio)
+### What’s the real app source?
+
+- **Real buildable WinUI app project**: `Put A Signature/Put A Signature/`
+- **Packaging project**: `Put A Signature/Put A Signature (Package)/`
+- **Build outputs / cache**: `.vs/`, `x64/`, `Put A Signature/Put A Signature/x64/`, `packages/` (normal for VS)
+
+If you still have a separate top-level `src/` folder, treat it as **legacy/reference**—the build uses the `.vcxproj` project folder above.
+
+### If you have NOT created the WinUI 3 C++/WinRT project yet
 - Install:
   - Visual Studio 2022 with **Desktop development with C++**
   - **Windows App SDK** tooling
@@ -12,21 +20,21 @@ This repository contains the **core starter source** under `src/`, but it does *
   - Project name recommendation: `PutASignature`
   - Solution name recommendation: `PutASignature`
 
-### Copy this repo’s starter sources into the project
-- Copy all files from this repo’s `src/` into your Visual Studio project folder (where `MainWindow.xaml` lives).
-- In Solution Explorer:
-  - Add the copied `.xaml`, `.h`, and `.cpp` files to the project (Add → Existing Item).
+### If you already created the project in this repo (most likely)
+You don’t need to create anything else—just work inside:
+
+- `Put A Signature/Put A Signature/`
+
+That project should contain:
+- `MainWindow.xaml/.h/.cpp` (UI + event handlers)
+- `PdfDocumentHandler.*` and `SignatureCapture.*` (backend + ink capture)
 
 ### Namespace alignment (important)
-This starter uses:
-- XAML class: `PutASignature.MainWindow`
-- C++ namespace: `winrt::PutASignature::implementation`
+Your Visual Studio template uses:
+- XAML class: `Put_A_Signature.MainWindow`
+- C++ namespace: `winrt::Put_A_Signature::implementation`
 
-If your project’s default namespace differs:
-- Either rename your project to `PutASignature`, **or**
-- Update:
-  - `src/MainWindow.xaml` `x:Class="YourNamespace.MainWindow"`
-  - `src/MainWindow.xaml.h/.cpp` namespaces accordingly
+Keep these consistent across XAML + C++.
 
 ### PDFium integration (intentionally high-level)
 This repo assumes PDFium is already available to your build:
@@ -37,7 +45,7 @@ This repo assumes PDFium is already available to your build:
 ### First run sanity checklist
 - Build + run app.
 - Click **Open PDF** → pick a PDF.
-- Draw in the signature panel.
+- Draw in the signature panel (this starter uses a **Canvas + pointer events** because **InkCanvas is not supported in WinUI 3**).
 - Click **Place Signature** (starter stamps at a fixed placeholder rect).
 - Click **Save Signed PDF**.
 

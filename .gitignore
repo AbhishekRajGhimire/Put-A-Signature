@@ -31,6 +31,11 @@ Generated Files/
 AppPackages/
 BundleArtifacts/
 
+# Template-specific generated folders
+Put A Signature/**/Generated Files/
+Put A Signature/**/bin/
+Put A Signature/**/obj/
+
 # Logs
 *.log
 
