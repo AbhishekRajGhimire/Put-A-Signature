@@ -1,4 +1,4 @@
-## Put a Signature — WinUI 3 (C++/WinRT) + PDFium Starter
+## Put a Signature — WinUI 3 (C++/WinRT) + PDFium
 
 #work in progress preview of interface
 
