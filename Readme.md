@@ -103,7 +103,7 @@ src/
 
 ---
 
-## Notes / next steps you’ll likely add
+## Notes / next features I will add
 
 - **Page navigation** (thumbnails, scrollable pages, or virtualization)
 - **Coordinate conversion** from UI pixels → PDF points (origin differences)
